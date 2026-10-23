@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 620" font-family="IBM Plex Mono, monospace">
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#4fd1ff"/></marker>
+</defs>
+<rect width="1180" height="620" fill="#0b1420"/>
+<text x="30" y="35" fill="#e8edf4" font-size="18" font-weight="700">Customer Churn Analytics — Entity Relationship Diagram</text>
+<text x="30" y="55" fill="#7d90a8" font-size="11">churn_analytics schema (PostgreSQL)</text>
+
+<!-- dim_customers -->
+<g>
+  <rect x="60" y="100" width="230" height="150" rx="6" fill="#101c2c" stroke="#22334a"/>
+  <rect x="60" y="100" width="230" height="28" rx="6" fill="#4fd1ff"/>
+  <text x="75" y="119" fill="#0b1420" font-size="12" font-weight="700">dim_customers</text>
+  <text x="75" y="148" fill="#e8edf4" font-size="10.5">PK customer_id</text>
+  <text x="75" y="164" fill="#7d90a8" font-size="10.5">gender, senior_citizen</text>
+  <text x="75" y="180" fill="#7d90a8" font-size="10.5">partner, dependents</text>
+  <text x="75" y="196" fill="#7d90a8" font-size="10.5">region, signup_date</text>
+  <text x="75" y="212" fill="#7d90a8" font-size="10.5">created_at, updated_at</text>
+</g>
+
+<!-- dim_services -->
+<g>
+  <rect x="60" y="300" width="230" height="160" rx="6" fill="#101c2c" stroke="#22334a"/>
+  <rect x="60" y="300" width="230" height="28" rx="6" fill="#35c4a1"/>
+  <text x="75" y="319" fill="#0b1420" font-size="12" font-weight="700">dim_services</text>
+  <text x="75" y="348" fill="#e8edf4" font-size="10.5">PK/FK customer_id</text>
+  <text x="75" y="364" fill="#7d90a8" font-size="10.5">phone_service, multiple_lines</text>
+  <text x="75" y="380" fill="#7d90a8" font-size="10.5">internet_service</text>
+  <text x="75" y="396" fill="#7d90a8" font-size="10.5">online_security, tech_support</text>
+  <text x="75" y="412" fill="#7d90a8" font-size="10.5">streaming_tv, streaming_movies</text>
+</g>
+
+<!-- dim_billing -->
+<g>
+  <rect x="440" y="100" width="240" height="160" rx="6" fill="#101c2c" stroke="#22334a"/>
+  <rect x="440" y="100" width="240" height="28" rx="6" fill="#f2b84b"/>
+  <text x="455" y="119" fill="#0b1420" font-size="12" font-weight="700">dim_billing</text>
+  <text x="455" y="148" fill="#e8edf4" font-size="10.5">PK/FK customer_id</text>
+  <text x="455" y="164" fill="#7d90a8" font-size="10.5">contract_type</text>
+  <text x="455" y="180" fill="#7d90a8" font-size="10.5">paperless_billing</text>
+  <text x="455" y="196" fill="#7d90a8" font-size="10.5">payment_method</text>
+  <text x="455" y="212" fill="#7d90a8" font-size="10.5">monthly_charges, total_charges</text>
+</g>
+
+<!-- fact_churn -->
+<g>
+  <rect x="440" y="300" width="240" height="150" rx="6" fill="#101c2c" stroke="#22334a"/>
+  <rect x="440" y="300" width="240" height="28" rx="6" fill="#ff7a59"/>
+  <text x="455" y="319" fill="#0b1420" font-size="12" font-weight="700">fact_churn</text>
+  <text x="455" y="348" fill="#e8edf4" font-size="10.5">PK/FK customer_id</text>
+  <text x="455" y="364" fill="#7d90a8" font-size="10.5">tenure_months</text>
+  <text x="455" y="380" fill="#7d90a8" font-size="10.5">support_tickets_last_year</text>
+  <text x="455" y="396" fill="#7d90a8" font-size="10.5">churn (bool), churn_date</text>
+</g>
+
+<!-- fact_predictions -->
+<g>
+  <rect x="830" y="100" width="270" height="150" rx="6" fill="#101c2c" stroke="#22334a"/>
+  <rect x="830" y="100" width="270" height="28" rx="6" fill="#8b7de8"/>
+  <text x="845" y="119" fill="#0b1420" font-size="12" font-weight="700">fact_predictions</text>
+  <text x="845" y="148" fill="#e8edf4" font-size="10.5">PK prediction_id</text>
+  <text x="845" y="164" fill="#7d90a8" font-size="10.5">FK customer_id</text>
+  <text x="845" y="180" fill="#7d90a8" font-size="10.5">churn_probability</text>
+  <text x="845" y="196" fill="#7d90a8" font-size="10.5">risk_segment, model_version</text>
+  <text x="845" y="212" fill="#7d90a8" font-size="10.5">predicted_at</text>
+</g>
+
+<!-- fact_customer_segments -->
+<g>
+  <rect x="830" y="300" width="270" height="150" rx="6" fill="#101c2c" stroke="#22334a"/>
+  <rect x="830" y="300" width="270" height="28" rx="6" fill="#4fd1ff"/>
+  <text x="845" y="319" fill="#0b1420" font-size="12" font-weight="700">fact_customer_segments</text>
+  <text x="845" y="348" fill="#e8edf4" font-size="10.5">PK/FK customer_id</text>
+  <text x="845" y="364" fill="#7d90a8" font-size="10.5">cluster_id, persona</text>
+  <text x="845" y="380" fill="#7d90a8" font-size="10.5">customer_value_score</text>
+  <text x="845" y="396" fill="#7d90a8" font-size="10.5">assigned_at</text>
+</g>
+
+<!-- relationships -->
+<line x1="290" y1="175" x2="440" y2="175" stroke="#4fd1ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="175" y1="250" x2="175" y2="300" stroke="#4fd1ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="560" y1="260" x2="560" y2="300" stroke="#4fd1ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="680" y1="175" x2="830" y2="175" stroke="#4fd1ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="680" y1="375" x2="830" y2="375" stroke="#4fd1ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<text x="30" y="520" fill="#7d90a8" font-size="11">All FK relationships are 1:1 (customer_id) except fact_predictions (1 customer : many predictions over time).</text>
+<text x="30" y="540" fill="#7d90a8" font-size="11">See database/schema.sql for full DDL, indexes, and constraint definitions.</text>
+</svg>

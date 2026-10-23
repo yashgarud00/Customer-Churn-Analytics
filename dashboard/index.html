@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Churn Analytics Console</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b1420;
+    --panel: #101c2c;
+    --panel-2: #142335;
+    --line: #22334a;
+    --text: #e8edf4;
+    --muted: #7d90a8;
+    --signal-bad: #ff7a59;
+    --signal-warn: #f2b84b;
+    --signal-good: #35c4a1;
+    --accent: #4fd1ff;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #0d1826, #0b1420);
+  }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: radial-gradient(circle at 30% 30%, var(--accent), #1a5c73 70%);
+    box-shadow: 0 0 18px rgba(79,209,255,0.35);
+  }
+  .brand h1 { font-size: 16px; margin: 0; letter-spacing: 0.02em; font-weight: 700; }
+  .brand .sub { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.05em; }
+  .status { font-family: var(--mono); font-size: 11px; color: var(--signal-good); display:flex; align-items:center; gap:6px; }
+  .status .dot { width:7px; height:7px; border-radius:50%; background: var(--signal-good); box-shadow: 0 0 8px var(--signal-good); }
+
+  nav {
+    display: flex; gap: 4px; padding: 10px 24px; border-bottom: 1px solid var(--line);
+    background: var(--panel); overflow-x: auto;
+  }
+  nav button {
+    background: transparent; border: none; color: var(--muted);
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    padding: 9px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+    transition: all .15s ease;
+  }
+  nav button:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  nav button.active { color: var(--bg); background: var(--accent); font-weight: 600; }
+
+  main { padding: 24px 28px 60px; max-width: 1400px; margin: 0 auto; }
+  .page { display: none; animation: fade .25s ease; }
+  .page.active { display: block; }
+  @keyframes fade { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; position: relative; overflow: hidden;
+  }
+  .kpi::before {
+    content: ""; position: absolute; top:0; left:0; width: 3px; height: 100%; background: var(--accent);
+  }
+  .kpi .label { font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .kpi .value { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -0.01em; }
+  .kpi .delta { font-family: var(--mono); font-size: 11px; margin-top: 4px; color: var(--muted); }
+  .kpi.bad::before { background: var(--signal-bad); }
+  .kpi.warn::before { background: var(--signal-warn); }
+  .kpi.good::before { background: var(--signal-good); }
+
+  .grid { display: grid; gap: 16px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 900px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+  .card .hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+  .card canvas { max-height: 280px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+       text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .tag { font-family: var(--mono); font-size: 10.5px; padding: 3px 8px; border-radius: 4px; }
+  .tag.Yes { background: rgba(255,122,89,0.15); color: var(--signal-bad); }
+  .tag.No { background: rgba(53,196,161,0.15); color: var(--signal-good); }
+
+  footer { text-align:center; padding: 30px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <div>
+      <h1>Churn Analytics Console</h1>
+      <div class="sub">TELECOM · CUSTOMER INTELLIGENCE PLATFORM</div>
+    </div>
+  </div>
+  <div class="status"><span class="dot"></span> LIVE SNAPSHOT · <span id="asof"></span></div>
+</header>
+
+<nav id="tabs">
+  <button data-page="exec" class="active">01 · Executive Summary</button>
+  <button data-page="customer">02 · Customer Analytics</button>
+  <button data-page="revenue">03 · Revenue Analytics</button>
+  <button data-page="churn">04 · Churn Dashboard</button>
+  <button data-page="regional">05 · Regional Dashboard</button>
+</nav>
+
+<main>
+
+  <!-- PAGE 1: EXECUTIVE SUMMARY -->
+  <section class="page active" id="page-exec">
+    <div class="kpi-row" id="exec-kpis"></div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Signups vs Churn — Monthly Trend</h3>
+        <div class="hint">New customer acquisition against churn volume, by signup cohort month</div>
+        <canvas id="chart-trend"></canvas>
+      </div>
+      <div class="card">
+        <h3>Churn Rate by Contract Type</h3>
+        <div class="hint">The single strongest lever available for retention strategy</div>
+        <canvas id="chart-contract-exec"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 2: CUSTOMER ANALYTICS -->
+  <section class="page" id="page-customer">
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Customer Personas</h3>
+        <div class="hint">K-Means segmentation (k=4), business-labeled clusters</div>
+        <canvas id="chart-personas"></canvas>
+      </div>
+      <div class="card">
+        <h3>Churn Rate by Persona</h3>
+        <div class="hint">Where retention spend has the highest expected ROI</div>
+        <canvas id="chart-persona-churn"></canvas>
+      </div>
+      <div class="card">
+        <h3>Tenure Distribution</h3>
+        <div class="hint">Customer count by tenure bucket (months)</div>
+        <canvas id="chart-tenure"></canvas>
+      </div>
+      <div class="card">
+        <h3>Churn Rate by Tenure Bucket</h3>
+        <div class="hint">First-year customers are the highest-risk window</div>
+        <canvas id="chart-tenure-churn"></canvas>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h3>Top 15 Highest-Value Customers</h3>
+      <div class="hint">Ranked by Customer Value Score — priority accounts for retention team</div>
+      <table id="top-customers-table">
+        <thead><tr><th>Customer ID</th><th>Region</th><th>Contract</th><th>Monthly $</th><th>Tenure</th><th>Persona</th><th>Churn</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PAGE 3: REVENUE ANALYTICS -->
+  <section class="page" id="page-revenue">
+    <div class="kpi-row" id="revenue-kpis"></div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Monthly Charges Distribution</h3>
+        <div class="hint">Histogram across the customer base</div>
+        <canvas id="chart-charges-hist"></canvas>
+      </div>
+      <div class="card">
+        <h3>MRR by Region</h3>
+        <div class="hint">Monthly recurring revenue concentration</div>
+        <canvas id="chart-mrr-region"></canvas>
+      </div>
+      <div class="card">
+        <h3>Avg Monthly Charges by Persona</h3>
+        <div class="hint">Revenue contribution per customer segment</div>
+        <canvas id="chart-persona-revenue"></canvas>
+      </div>
+      <div class="card">
+        <h3>Internet Service Mix</h3>
+        <div class="hint">Fiber optic carries higher revenue but also higher churn (see Churn Dashboard)</div>
+        <canvas id="chart-internet-mix"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 4: CHURN DASHBOARD -->
+  <section class="page" id="page-churn">
+    <div class="kpi-row" id="churn-kpis"></div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Churn Rate by Payment Method</h3>
+        <div class="hint">Electronic check payers churn most — nudge toward autopay</div>
+        <canvas id="chart-payment"></canvas>
+      </div>
+      <div class="card">
+        <h3>Churn Rate: Senior Citizen vs Non-Senior</h3>
+        <div class="hint">Segment-specific support strategy consideration</div>
+        <canvas id="chart-senior"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 5: REGIONAL DASHBOARD -->
+  <section class="page" id="page-regional">
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Customers by Region</h3>
+        <div class="hint">Base size across the five operating regions</div>
+        <canvas id="chart-region-customers"></canvas>
+      </div>
+      <div class="card">
+        <h3>Churn Rate by Region</h3>
+        <div class="hint">Regional variance flags local market or service-quality issues</div>
+        <canvas id="chart-region-churn"></canvas>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Customer Churn Analytics Platform · Data refreshed via ETL pipeline · This is a static snapshot — connect to <code>/dashboard</code> API endpoint for live data</footer>
+
+<script>
+const PALETTE = { accent:'#4fd1ff', bad:'#ff7a59', warn:'#f2b84b', good:'#35c4a1', muted:'#7d90a8', line:'#22334a' };
+Chart.defaults.color = '#7d90a8';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.borderColor = '#22334a';
+
+let DATA = null;
+
+async function loadData() {
+  const res = await fetch('dashboard_data.json');
+  DATA = await res.json();
+  document.getElementById('asof').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
+  renderExec(); renderCustomer(); renderRevenue(); renderChurn(); renderRegional();
+}
+
+function kpi(label, value, cls='') {
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+}
+
+function renderExec() {
+  const k = DATA.kpis;
+  document.getElementById('exec-kpis').innerHTML =
+    kpi('Total Customers', k.total_customers.toLocaleString()) +
+    kpi('Churn Rate', k.churn_rate_pct + '%', 'bad') +
+    kpi('Total MRR', '$' + k.total_mrr.toLocaleString()) +
+    kpi('ARPU', '$' + k.arpu) +
+    kpi('At-Risk MRR', '$' + k.at_risk_mrr.toLocaleString(), 'warn') +
+    kpi('Avg Tenure', k.avg_tenure + ' mo');
+
+  new Chart(document.getElementById('chart-trend'), {
+    type: 'line',
+    data: {
+      labels: DATA.monthly_trend.months,
+      datasets: [
+        { label: 'Signups', data: DATA.monthly_trend.signups, borderColor: PALETTE.accent, backgroundColor: 'rgba(79,209,255,0.08)', fill:true, tension:.3, pointRadius:0 },
+        { label: 'Churned', data: DATA.monthly_trend.churned, borderColor: PALETTE.bad, backgroundColor: 'rgba(255,122,89,0.08)', fill:true, tension:.3, pointRadius:0 },
+      ]
+    },
+    options: { responsive:true, scales:{ x:{ ticks:{ maxTicksLimit:8 }, grid:{color:PALETTE.line} }, y:{ grid:{color:PALETTE.line} } } }
+  });
+
+  barChart('chart-contract-exec', DATA.churn_by_contract, PALETTE.bad, '% churned');
+}
+
+function renderCustomer() {
+  new Chart(document.getElementById('chart-personas'), {
+    type: 'doughnut',
+    data: { labels: Object.keys(DATA.persona_distribution), datasets:[{ data: Object.values(DATA.persona_distribution),
+      backgroundColor: [PALETTE.accent, PALETTE.bad, PALETTE.warn, PALETTE.good, '#8b7de8'] }] },
+    options: { plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:10.5} } } } }
+  });
+  barChart('chart-persona-churn', DATA.persona_churn, PALETTE.bad, '% churned');
+  barChart('chart-tenure', DATA.tenure_distribution, PALETTE.accent, 'customers');
+  barChart('chart-tenure-churn', DATA.churn_by_tenure_bucket, PALETTE.warn, '% churned');
+
+  const tbody = document.querySelector('#top-customers-table tbody');
+  tbody.innerHTML = DATA.top_value_customers.map(c => `
+    <tr><td>${c.customerID}</td><td>${c.Region}</td><td>${c.Contract}</td>
+    <td>$${c.MonthlyCharges.toFixed(2)}</td><td>${c.tenure} mo</td><td>${c.Persona}</td>
+    <td><span class="tag ${c.Churn}">${c.Churn}</span></td></tr>`).join('');
+}
+
+function renderRevenue() {
+  const k = DATA.kpis;
+  document.getElementById('revenue-kpis').innerHTML =
+    kpi('Total MRR', '$' + k.total_mrr.toLocaleString()) +
+    kpi('ARPU', '$' + k.arpu) +
+    kpi('At-Risk MRR', '$' + k.at_risk_mrr.toLocaleString(), 'warn') +
+    kpi('Projected Annual Revenue', '$' + Math.round(k.total_mrr*12).toLocaleString(), 'good');
+
+  const edges = DATA.monthly_charges_hist.edges;
+  const labels = edges.slice(0,-1).map((e,i) => `$${Math.round(e)}-${Math.round(edges[i+1])}`);
+  new Chart(document.getElementById('chart-charges-hist'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: DATA.monthly_charges_hist.counts, backgroundColor: PALETTE.accent, borderRadius: 4 }] },
+    options: { plugins:{legend:{display:false}}, scales:{ x:{ ticks:{font:{size:9}}, grid:{display:false}}, y:{grid:{color:PALETTE.line}} } }
+  });
+
+  barChart('chart-mrr-region', DATA.mrr_by_region, PALETTE.good, '$ MRR');
+  barChart('chart-persona-revenue', DATA.persona_avg_charges, PALETTE.accent, 'avg $/mo');
+
+  new Chart(document.getElementById('chart-internet-mix'), {
+    type: 'pie',
+    data: { labels: Object.keys(DATA.internet_service_mix), datasets:[{ data: Object.values(DATA.internet_service_mix),
+      backgroundColor: [PALETTE.accent, PALETTE.warn, PALETTE.muted] }] },
+    options: { plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } } }
+  });
+}
+
+function renderChurn() {
+  const k = DATA.kpis;
+  document.getElementById('churn-kpis').innerHTML =
+    kpi('Overall Churn Rate', k.churn_rate_pct + '%', 'bad') +
+    kpi('Highest Risk Contract', 'Month-to-month', 'warn') +
+    kpi('At-Risk MRR', '$' + k.at_risk_mrr.toLocaleString(), 'warn');
+
+  barChart('chart-payment', DATA.churn_by_payment, PALETTE.bad, '% churned', true);
+
+  new Chart(document.getElementById('chart-senior'), {
+    type: 'bar',
+    data: { labels: ['Non-Senior','Senior Citizen'],
+      datasets:[{ data: [DATA.senior_citizen_churn['0'], DATA.senior_citizen_churn['1']], backgroundColor: [PALETTE.accent, PALETTE.warn], borderRadius:6 }] },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ grid:{color:PALETTE.line} }, x:{grid:{display:false}} } }
+  });
+}
+
+function renderRegional() {
+  barChart('chart-region-customers', DATA.customers_by_region, PALETTE.accent, 'customers');
+  barChart('chart-region-churn', DATA.churn_by_region, PALETTE.bad, '% churned');
+}
+
+function barChart(id, dataObj, color, label, horizontal=false) {
+  new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels: Object.keys(dataObj), datasets: [{ label, data: Object.values(dataObj), backgroundColor: color, borderRadius: 6 }] },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      plugins: { legend: { display:false } },
+      scales: { x: { grid:{color:PALETTE.line} }, y: { grid:{color:PALETTE.line} } }
+    }
+  });
+}
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-' + btn.dataset.page).classList.add('active');
+});
+
+loadData();
+</script>
+</body>
+</html>

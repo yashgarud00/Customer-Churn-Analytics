@@ -1,0 +1,22 @@
+# Dockerfile.etl -- runs the full data pipeline (ETL -> features -> model)
+# Intended to run as a one-off job or scheduled task, not a long-lived service.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["sh", "-c", "python src/ETL/generate_raw_data.py && \
+                   python src/ETL/etl_pipeline.py && \
+                   python src/preprocessing/feature_engineering.py && \
+                   python src/modeling/train_models.py && \
+                   python src/modeling/customer_segmentation.py"]
